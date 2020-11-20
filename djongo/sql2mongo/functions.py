@@ -18,10 +18,13 @@ class SQLFunc(AliasableToken):
     def token2sql(token: Token,
                   query: 'query_module.BaseQuery'
                   ) -> U['CountFunc',
-                         'SimpleFunc']:
+                         'SimpleFunc',
+                         'SimpleConvertFunc']:
         func = token[0].get_name()
         if func == 'COUNT':
             return CountFunc.token2sql(token, query)
+        elif func == "LOWER" or func == "UPPER":
+            return SimpleConvertFunc(token, query)
         else:
             return SimpleFunc(token, query)
 
@@ -122,4 +125,10 @@ class SimpleFunc(SingleParamFunc):
         else:
             raise SQLDecodeError(f'Unsupported func: {self.func}')
 
-
+class SimpleConvertFunc(SingleParamFunc):
+    def to_mongo(self):
+        field = f'${self.iden.field}'
+        if self.func in ('LOWER', 'UPPER'):
+            return {f'$to{self.func.capitalize()}': field}
+        else:
+            raise SQLDecodeError(f'Unsupported func: {self.func}')

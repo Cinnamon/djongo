@@ -6,7 +6,7 @@ from sqlparse.sql import Parenthesis
 from typing import Union as U, List, Optional as O
 from . import query as query_module
 from .sql_tokens import SQLIdentifier, SQLConstIdentifier, SQLComparison
-from .functions import SQLFunc, CountFuncAll
+from .functions import SQLFunc, CountFuncAll, SimpleConvertFunc
 from .operators import WhereOp
 from ..exceptions import SQLDecodeError
 from .sql_tokens import SQLToken, SQLStatement
@@ -62,10 +62,12 @@ class AggColumnSelectConverter(ColumnSelectConverter):
 
     def to_mongo(self):
         project = {}
-
         if any(isinstance(tok, SQLFunc) for tok in self.sql_tokens):
             # A SELECT func without groupby clause still needs a groupby
             # in MongoDB
+            if any(isinstance(tok, SimpleConvertFunc) for tok in self.sql_tokens):
+                return self._using_project()
+            # A SELECT func with convert function like Lower and Upper no need groupby
             return self._using_group_by()
 
         elif isinstance(self.sql_tokens[0], SQLConstIdentifier):
@@ -101,6 +103,23 @@ class AggColumnSelectConverter(ColumnSelectConverter):
 
         return pipeline
 
+    def _using_project(self):
+        project = {
+            '_id': False
+        }
+        for selected in self.sql_tokens:
+            if isinstance(selected, SQLFunc):
+                project[selected.alias] = selected.to_mongo()
+            else:
+                project[selected.field] = True
+
+        pipeline = [
+            {
+                '$project': project
+            }
+        ]
+
+        return pipeline
 
 class FromConverter(Converter):
 
