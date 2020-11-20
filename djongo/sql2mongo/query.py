@@ -209,10 +209,6 @@ class SelectQuery(DQLQuery):
         if self.distinct:
             pipeline.extend(self.distinct.to_mongo())
 
-        if self.order:
-            self.order.__class__ = AggOrderConverter
-            pipeline.append(self.order.to_mongo())
-
         if self.offset:
             self.offset.__class__ = AggOffsetConverter
             pipeline.append(self.offset.to_mongo())
@@ -224,6 +220,10 @@ class SelectQuery(DQLQuery):
         if self._needs_column_selection():
             self.selected_columns.__class__ = AggColumnSelectConverter
             pipeline.extend(self.selected_columns.to_mongo())
+
+        if self.order: # The sequence effect the result if we put this behind $project
+            self.order.__class__ = AggOrderConverter
+            pipeline.append(self.order.to_mongo())
 
         return pipeline
 
