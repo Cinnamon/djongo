@@ -36,9 +36,12 @@ class SQLToken:
             # Bug fix for sql parse
             if isinstance(token[0], Parenthesis):
                 try:
-                    int(token[0][1].value)
+                    int(token[0][1].value)              
                 except ValueError:
-                    raise
+                    try:
+                        str(token[0][1].value)
+                    except ValueError:
+                        raise
                 else:
                     yield SQLConstIdentifier(token, query)
             elif isinstance(token[0], Function):
